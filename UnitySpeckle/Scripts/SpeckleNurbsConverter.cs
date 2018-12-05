@@ -122,7 +122,7 @@ public static partial class SpeckleUnityConverter
 
         go.name = "Speckle " + verbData.Type;
 
-        go.GetComponent<UnitySpeckleObjectData>().Id = id;
+        go.GetComponent<SpeckleUnityObjectData>().Id = id;
 
         Vector3[] pts = nurbsCurve.Tessellate();
         //Vector3[] ptz = blurb.Tessellate();

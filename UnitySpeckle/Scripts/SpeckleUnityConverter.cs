@@ -43,21 +43,21 @@ public static partial class SpeckleUnityConverter
     
     private static GameObject BaseMeshObject()
     {
-        GameObject prefab = GameObject.Find("SpeckleManager").GetComponent<UnitySpeckle>().MeshPrefab;
+        GameObject prefab = GameObject.Find("SpeckleManager").GetComponent<SpeckleUnity>().MeshPrefab;
         GameObject go = GameObject.Instantiate(prefab);
         return go;        
     }
 
     private static GameObject BaseLineObject()
     {
-        GameObject prefab = GameObject.Find("SpeckleManager").GetComponent<UnitySpeckle>().LinePrefab;
+        GameObject prefab = GameObject.Find("SpeckleManager").GetComponent<SpeckleUnity>().LinePrefab;
         GameObject go = GameObject.Instantiate(prefab);
         return go;
     }
 
     private static GameObject BasePointObject()
     {
-        GameObject prefab = GameObject.Find("SpeckleManager").GetComponent<UnitySpeckle>().PointPrefab;
+        GameObject prefab = GameObject.Find("SpeckleManager").GetComponent<SpeckleUnity>().PointPrefab;
         GameObject go = GameObject.Instantiate(prefab);
         return go;
     }
@@ -71,8 +71,8 @@ public static partial class SpeckleUnityConverter
     {        
         GameObject go = BasePointObject();
         
-        go.GetComponent<UnitySpeckleObjectData>().Id = pt._id;
-        go.GetComponent<UnitySpeckleObjectData>().speckleObject = pt;
+        go.GetComponent<SpeckleUnityObjectData>().Id = pt._id;
+        go.GetComponent<SpeckleUnityObjectData>().speckleObject = pt;
 
         
 
@@ -94,8 +94,8 @@ public static partial class SpeckleUnityConverter
     public static GameObject ToNative(this SpecklePolyline pl)
     {
         GameObject go = BaseLineObject();
-        go.GetComponent<UnitySpeckleObjectData>().Id = pl._id;
-        go.GetComponent<UnitySpeckleObjectData>().speckleObject = pl;
+        go.GetComponent<SpeckleUnityObjectData>().Id = pl._id;
+        go.GetComponent<SpeckleUnityObjectData>().speckleObject = pl;
 
         Vector3[] pts = pl.Value.ToPoints();
         go.GetComponent<LineRenderer>().positionCount = pts.Count();
@@ -113,8 +113,8 @@ public static partial class SpeckleUnityConverter
         {
             GameObject go = BaseMeshObject();
             
-            go.GetComponent<UnitySpeckleObjectData>().Id = mesh._id;
-            go.GetComponent<UnitySpeckleObjectData>().speckleObject = mesh;
+            go.GetComponent<SpeckleUnityObjectData>().Id = mesh._id;
+            go.GetComponent<SpeckleUnityObjectData>().speckleObject = mesh;
         
 
         var newMesh = go.GetComponent<MeshFilter>().mesh;
@@ -168,10 +168,12 @@ public static partial class SpeckleUnityConverter
 
     }
 
-    public static GameObject ToNative(this SpeckleCurve curve)
-    {
-        var polyline = curve.DisplayValue;
-        return polyline.ToNative();
-    }
+
+    ///Handled in NurbsConverter
+    //public static GameObject ToNative(this SpeckleCurve curve)
+    //{
+    //    var polyline = curve.DisplayValue;
+    //    return polyline.ToNative();
+    //}
 
 }
