@@ -1,0 +1,43 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28010.2048
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SpeckleUnity", "SpeckleUnity\SpeckleUnity.csproj", "{7F27C28D-B502-4BFD-99FE-2CAF1D2D7BD6}"
+	ProjectSection(ProjectDependencies) = postProject
+		{CFE27D3D-8A1A-43F9-9387-8FD9E119E174} = {CFE27D3D-8A1A-43F9-9387-8FD9E119E174}
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SpeckleUnityConverter", "SpeckleUnityConverter\SpeckleUnityConverter.csproj", "{3DAE84B1-1AFA-4CDE-92C0-DDFB817209F0}"
+	ProjectSection(ProjectDependencies) = postProject
+		{CFE27D3D-8A1A-43F9-9387-8FD9E119E174} = {CFE27D3D-8A1A-43F9-9387-8FD9E119E174}
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SpeckleCore", "SpeckleCore\SpeckleCore\SpeckleCore.csproj", "{CFE27D3D-8A1A-43F9-9387-8FD9E119E174}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7F27C28D-B502-4BFD-99FE-2CAF1D2D7BD6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7F27C28D-B502-4BFD-99FE-2CAF1D2D7BD6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7F27C28D-B502-4BFD-99FE-2CAF1D2D7BD6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7F27C28D-B502-4BFD-99FE-2CAF1D2D7BD6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3DAE84B1-1AFA-4CDE-92C0-DDFB817209F0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3DAE84B1-1AFA-4CDE-92C0-DDFB817209F0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3DAE84B1-1AFA-4CDE-92C0-DDFB817209F0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3DAE84B1-1AFA-4CDE-92C0-DDFB817209F0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CFE27D3D-8A1A-43F9-9387-8FD9E119E174}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CFE27D3D-8A1A-43F9-9387-8FD9E119E174}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CFE27D3D-8A1A-43F9-9387-8FD9E119E174}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CFE27D3D-8A1A-43F9-9387-8FD9E119E174}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {FA6FB08F-BC41-4A0D-9325-07A6FAEADD37}
+	EndGlobalSection
+EndGlobal
