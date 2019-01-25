@@ -59,8 +59,6 @@ public class UnitySpeckle : MonoBehaviour
     void OnApplicationQuit()
     {
         Debug.Log("Application ending after " + Time.time + " seconds");
-        if (Receiver != null)
-            Receiver.Client.Dispose(true);
     }
 
 }

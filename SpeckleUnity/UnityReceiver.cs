@@ -10,56 +10,41 @@ using System.Reflection;
 
 public class UnityReceiver : MonoBehaviour
 {
+    private SpeckleCore.SpeckleApiClient Client;
 
-    public SpeckleCore.SpeckleApiClient Client { get; set; }
-    public List<SpeckleCore.SpeckleObject> SpeckleObjects { get; set; }
-    public List<object> ConvertedObjects;
+    private List<SpeckleCore.SpeckleObject> SpeckleObjects;
+    private Dictionary<SpeckleCore.Layer, GameObject> Layers = new Dictionary<SpeckleCore.Layer, GameObject>();
     
-    private Dictionary<String, SpeckleCore.SpeckleObject> ObjectCache = new Dictionary<string, SpeckleCore.SpeckleObject>();
-    private bool bUpdateDisplay = false;
-    private bool bRefreshDisplay = false;
+    private bool bRefreshDisplay = false, bRefreshingDisplay = false;
 
-    public GameObject rootGameObject;
+    private GameObject rootGameObject;
     
     private string authToken = "put auth token here"; //TODO - actually login to get this
-    private string StreamID;
-
-    
 
     // Use this for initialization
     void Start()
     {
-
     }
 
     // Update is called once per frame
     void Update()
     {
-
-        if (bUpdateDisplay)
-        {
-            //Initial creation of objects
-            bUpdateDisplay = false;
-            CreateObjects();
-
-            //call event on SpeckleManager to allow users to do their own thing when a stream is updated
-            transform.GetComponent<UnitySpeckle>().OnUpdateReceived.Invoke(this);
-        }
-        if (bRefreshDisplay)
+        if (bRefreshDisplay && !bRefreshingDisplay)
         {
             //Clears existing objects first
             bRefreshDisplay = false;
-            RefreshObjects();
+            bRefreshingDisplay = true;
+            UpdateGlobal();
         }
 
     }
 
     // Initialise receiver
-    public async void Init(string inStreamID, string URL) 
+    public async void Init(string StreamId, string URL) 
     {
         Client = new SpeckleCore.SpeckleApiClient(URL);
 
-        //Assign events
+        // Assign events
         Client.OnReady += Client_OnReady;
         Client.OnLogData += Client_OnLogData;
         Client.OnWsMessage += Client_OnWsMessage;
@@ -67,76 +52,78 @@ public class UnityReceiver : MonoBehaviour
 
         SpeckleObjects = new List<SpeckleCore.SpeckleObject>();
 
-        StreamID = inStreamID;
-        await Client.IntializeReceiver(StreamID, Application.productName, "Unity", Application.buildGUID, authToken);
+        await Client.IntializeReceiver(StreamId, Application.productName, "Unity", Application.buildGUID, authToken);
 
-        Client.Stream = (await Client.StreamGetAsync(StreamID, null)).Resource;
+        Client.Stream = (await Client.StreamGetAsync(Client.StreamId, null)).Resource;
 
-        if (rootGameObject == null)
-            rootGameObject = new GameObject(Client.Stream.Name);
+        rootGameObject = new GameObject(Client.Stream.Name);
 
-        //call event on SpeckleManager to allow users to do their own thing when a stream is created
+        // Call event on SpeckleManager to allow users to do their own thing when a stream is created
         transform.GetComponent<UnitySpeckle>().OnReceiverCreated.Invoke(this);
 
         UpdateGlobal();
     }
 
-    //Wrapper for update coroutine
     public async void UpdateGlobal()
-    {        
-        SpeckleObjects.Clear();
-        ObjectCache.Clear();
-        var streamGetResponse = Client.StreamGetAsync(StreamID, null).Result;
+    {
+        bRefreshingDisplay = true;
+
+        var streamGetResponse = await Client.StreamGetAsync(Client.StreamId, null);
+
         if (streamGetResponse.Success == false)
         {
-            Debug.Log(streamGetResponse.Message);
+            Debug.Log(streamGetResponse.Message); // TODO: Actually handle this
         }
 
-        Client.Stream = streamGetResponse.Resource;
+        Client.Stream = streamGetResponse.Resource; // This is gross of the C# API
         
         Debug.Log("Getting objects....");
-        var payload = Client.Stream.Objects.Select(obj => obj._id).ToArray();
-	
-        var getObjectResult = await Client.ObjectGetBulkAsync(payload, null);
-               
-        foreach (var x in getObjectResult.Resources)
-            ObjectCache.Add(x._id, x);
+        var getObjectResult = await Client.ObjectGetBulkAsync(Client.Stream.Objects.Select(obj => obj._id).ToArray(), null); // TODO: Check if ObjectGetBulkAsync returns objects in a corresponding order. If it does, the next little bit can be simplified
         
-        foreach (var obj in Client.Stream.Objects)
-            SpeckleObjects.Add(ObjectCache[obj._id]);             
+        Dictionary<string, SpeckleCore.SpeckleObject> ObjectCache = getObjectResult.Resources.ToDictionary(speckleObject => speckleObject._id);
+        
+        SpeckleObjects = Client.Stream.Objects.Select(speckleObject => ObjectCache[speckleObject._id]).ToList();
 
-        bUpdateDisplay = true;       
-    }
-
-    public void RefreshObjects()
-    {
-        //Clear existing objects
-        //TODO - update existing objects instead of destroying/recreating all of them
-        foreach (var co in ConvertedObjects)
+        // Remove old layers
+        foreach (SpeckleCore.Layer layer in Layers.Keys.Where(layer => Client.Stream.Layers.Where(newLayer => newLayer.Guid != layer.Guid).Count() > 0).ToList()) // ToList is required because we're modifying Layers, I think
         {
-            GameObject tempObj = (GameObject)co;
-            Destroy(tempObj);
+            Destroy(Layers[layer]);
+            Layers.Remove(layer);
         }
-        ConvertedObjects.Clear();
 
-        UpdateGlobal();        
-    }
-
-    public void CreateObjects()
-    {
-        //Generate native GameObjects with methods from SpeckleUnityConverter 
-        ConvertedObjects = SpeckleCore.Converter.Deserialise(SpeckleObjects);
-        
-        for (int i = 0; i < ConvertedObjects.Count; i++)
+        // Add new layers
+        foreach (SpeckleCore.Layer layer in Client.Stream.Layers.Where(layer => !Layers.ContainsKey(layer)).ToList())
         {
-            GameObject go = (GameObject)ConvertedObjects[i];
+            Layers[layer] = new GameObject(layer.Name);
+            Layers[layer].transform.SetParent(rootGameObject.transform);
+        }
+
+        // Mark all existing objects
+        foreach (UnitySpeckleObjectData usod in rootGameObject.GetComponentsInChildren<UnitySpeckleObjectData>())
+        {
+            usod.LayerName = null;
+        }
+
+        // Create new objects
+        for (int i = 0; i < SpeckleObjects.Count; i++)
+        {
             SpeckleCore.Layer layer = LayerFromIndex(i);
-            GameObject layerObject = LayerGameObjectFromLayer(layer);
+            GameObject layerObject = Layers[layer];
+            GameObject gameObject = (GameObject)SpeckleCore.Converter.Deserialise(SpeckleObjects[i]); // TODO: This creates a new game object even if one already exists. It should reuse objects which already exist
+            // TODO: The more fundamental issue is that checking which layer an object is in is tricky. Perhaps layers map more naturally to Unity's tags.
 
-            go.GetComponent<UnitySpeckleObjectData>().LayerName = layer.Name;
-            go.transform.SetParent(layerObject.transform);
+            gameObject.GetComponent<UnitySpeckleObjectData>().LayerName = layer.Name;
+            gameObject.transform.SetParent(layerObject.transform);
         }
 
+        // Destroy all objects which are still marked
+        foreach (UnitySpeckleObjectData usod in rootGameObject.GetComponentsInChildren<UnitySpeckleObjectData>()) if (usod.LayerName == null)
+        {
+            Destroy(usod.gameObject);
+        }
+
+        bRefreshingDisplay = false;
+        transform.GetComponent<UnitySpeckle>().OnUpdateReceived.Invoke(this);
     }
 
     private SpeckleCore.Layer LayerFromIndex(int index)
@@ -144,40 +131,31 @@ public class UnityReceiver : MonoBehaviour
         return Client.Stream.Layers.FirstOrDefault(layer => layer.StartIndex <= index && index < layer.StartIndex + layer.ObjectCount);
     }
 
-    private GameObject LayerGameObjectFromLayer(SpeckleCore.Layer layer)
-    {
-            GameObject layerObject = GameObject.Find(layer.Name);
-            if (layerObject == null)
-            {
-                layerObject = new GameObject(layer.Name);
-                layerObject.transform.SetParent(rootGameObject.transform);
-            }
-            return layerObject;
-    }
-    
-
     public virtual void Client_OnReady(object source, SpeckleCore.SpeckleEventArgs e)
     {
         Debug.Log("Client ready");
-        //Debug.Log(JsonConvert.SerializeObject(e.EventData));
+        Debug.Log(JsonConvert.SerializeObject(e.EventData));
     }
     public virtual void Client_OnLogData(object source, SpeckleCore.SpeckleEventArgs e)
     {
-        //Debug.Log("Client LogData");
-        //Debug.Log(JsonConvert.SerializeObject(e.EventData));
+        Debug.Log("Client LogData");
+        Debug.Log(JsonConvert.SerializeObject(e.EventData));
     }
     public virtual void Client_OnWsMessage(object source, SpeckleCore.SpeckleEventArgs e)
     {
-        //Debug.Log("Client WsMessage");
-        //Debug.Log(JsonConvert.SerializeObject(e.EventData));
+        Debug.Log("Client WsMessage");
+        Debug.Log(JsonConvert.SerializeObject(e.EventData));
 
-        //Set refresh to true to prompt recreating geometry
         bRefreshDisplay = true;
         
     }
     public virtual void Client_OnError(object source, SpeckleCore.SpeckleEventArgs e)
     {
-        //Debug.Log("Client Error");
-        //Debug.Log(JsonConvert.SerializeObject(e.EventData));
+        Debug.LogError(JsonConvert.SerializeObject(e.EventData));
+    }
+
+    void OnDestroy()
+    {
+        Client.Dispose(true);
     }
 }
