@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using UnityEngine;
 
 using System.Linq;
-using SpeckleCore;
 using Newtonsoft.Json;
 
 using System.Reflection;
@@ -12,11 +11,11 @@ using System.Reflection;
 public class UnityReceiver : MonoBehaviour
 {
 
-    public SpeckleApiClient Client { get; set; }
-    public List<SpeckleObject> SpeckleObjects { get; set; }
+    public SpeckleCore.SpeckleApiClient Client { get; set; }
+    public List<SpeckleCore.SpeckleObject> SpeckleObjects { get; set; }
     public List<object> ConvertedObjects;
     
-    private Dictionary<String, SpeckleObject> ObjectCache = new Dictionary<string, SpeckleObject>();
+    private Dictionary<String, SpeckleCore.SpeckleObject> ObjectCache = new Dictionary<string, SpeckleCore.SpeckleObject>();
     private bool bUpdateDisplay = false;
     private bool bRefreshDisplay = false;
 
@@ -30,7 +29,6 @@ public class UnityReceiver : MonoBehaviour
     // Use this for initialization
     void Start()
     {
-                
 
     }
 
@@ -59,7 +57,7 @@ public class UnityReceiver : MonoBehaviour
     // Initialise receiver
     public async void Init(string inStreamID, string URL) 
     {
-        Client = new SpeckleApiClient(URL);
+        Client = new SpeckleCore.SpeckleApiClient(URL);
 
         //Assign events
         Client.OnReady += Client_OnReady;
@@ -67,10 +65,7 @@ public class UnityReceiver : MonoBehaviour
         Client.OnWsMessage += Client_OnWsMessage;
         Client.OnError += Client_OnError;
 
-        //make sure convereter is loaded
-        var hack = new ConverterHack();
-
-        SpeckleObjects = new List<SpeckleObject>();
+        SpeckleObjects = new List<SpeckleCore.SpeckleObject>();
 
         StreamID = inStreamID;
         await Client.IntializeReceiver(StreamID, Application.productName, "Unity", Application.buildGUID, authToken);
@@ -129,58 +124,49 @@ public class UnityReceiver : MonoBehaviour
 
     public void CreateObjects()
     {
-        Debug.Log(SpeckleObjects[0]);
         //Generate native GameObjects with methods from SpeckleUnityConverter 
-        ConvertedObjects = Converter.Deserialise(SpeckleObjects);
-        Debug.Log(ConvertedObjects.Count);
-
-        Debug.Log(rootGameObject);
-        foreach (GameObject go in ConvertedObjects)
-        {
-            Debug.Log(go);
-            go.transform.SetParent(rootGameObject.transform, false);
-        }
+        ConvertedObjects = SpeckleCore.Converter.Deserialise(SpeckleObjects);
         
-
-        ////Set layer information
-        int objectCount = 0;
-        GameObject LayerObject;
-        foreach (var layer in Client.Stream.Layers)
+        for (int i = 0; i < ConvertedObjects.Count; i++)
         {
-            string LayerName = layer.Name;
-                        
-            LayerObject = (GameObject.Find(LayerName));
-            if (LayerObject == null)
-            {
-                LayerObject = new GameObject(LayerName);
-                LayerObject.transform.SetParent(rootGameObject.transform);
-            }
-            
-            for (int i = 0; i < 1; i++) //layer.ObjectCount; i++)
-            {
-                GameObject go = (GameObject)ConvertedObjects[objectCount];
-                Debug.Log(go);
-                go.GetComponent<UnitySpeckleObjectData>().LayerName = LayerName;
-                go.transform.SetParent(LayerObject.transform);               
-                objectCount++;
-            }
+            GameObject go = (GameObject)ConvertedObjects[i];
+            SpeckleCore.Layer layer = LayerFromIndex(i);
+            GameObject layerObject = LayerGameObjectFromLayer(layer);
+
+            go.GetComponent<UnitySpeckleObjectData>().LayerName = layer.Name;
+            go.transform.SetParent(layerObject.transform);
         }
 
-        
+    }
+
+    private SpeckleCore.Layer LayerFromIndex(int index)
+    {
+        return Client.Stream.Layers.FirstOrDefault(layer => layer.StartIndex <= index && index < layer.StartIndex + layer.ObjectCount);
+    }
+
+    private GameObject LayerGameObjectFromLayer(SpeckleCore.Layer layer)
+    {
+            GameObject layerObject = GameObject.Find(layer.Name);
+            if (layerObject == null)
+            {
+                layerObject = new GameObject(layer.Name);
+                layerObject.transform.SetParent(rootGameObject.transform);
+            }
+            return layerObject;
     }
     
 
-    public virtual void Client_OnReady(object source, SpeckleEventArgs e)
+    public virtual void Client_OnReady(object source, SpeckleCore.SpeckleEventArgs e)
     {
         Debug.Log("Client ready");
         //Debug.Log(JsonConvert.SerializeObject(e.EventData));
     }
-    public virtual void Client_OnLogData(object source, SpeckleEventArgs e)
+    public virtual void Client_OnLogData(object source, SpeckleCore.SpeckleEventArgs e)
     {
         //Debug.Log("Client LogData");
         //Debug.Log(JsonConvert.SerializeObject(e.EventData));
     }
-    public virtual void Client_OnWsMessage(object source, SpeckleEventArgs e)
+    public virtual void Client_OnWsMessage(object source, SpeckleCore.SpeckleEventArgs e)
     {
         //Debug.Log("Client WsMessage");
         //Debug.Log(JsonConvert.SerializeObject(e.EventData));
@@ -189,7 +175,7 @@ public class UnityReceiver : MonoBehaviour
         bRefreshDisplay = true;
         
     }
-    public virtual void Client_OnError(object source, SpeckleEventArgs e)
+    public virtual void Client_OnError(object source, SpeckleCore.SpeckleEventArgs e)
     {
         //Debug.Log("Client Error");
         //Debug.Log(JsonConvert.SerializeObject(e.EventData));
